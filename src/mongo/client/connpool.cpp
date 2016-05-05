@@ -78,7 +78,7 @@ namespace mongo {
                 microSec <= _minValidCreationTimeMicroSec;
     }
 
-    DBClientBase * PoolForHost::get( DBConnectionPool * pool , double socketTimeout ) {
+    DBClientBase * PoolForHost::get( DBConnectionPool * pool , double socketTimeout, const string username="", const string passwd="") {
 
         time_t now = time(0);
         
@@ -164,23 +164,31 @@ namespace mongo {
           _hooks( new list<DBConnectionHook*>() ) {
     }
 
-    DBClientBase* DBConnectionPool::_get(const string& ident , double socketTimeout ) {
+    DBClientBase* DBConnectionPool::_get(const string& ident , double socketTimeout, const string username, const string passwd ) {
         uassert(17382, "Can't use connection pool during shutdown",
                 !inShutdown());
+        log()<<"use which pool "<< ident << " " << socketTimeout<<endl;
         scoped_lock L(_mutex);
         PoolForHost& p = _pools[PoolKey(ident,socketTimeout)];
         p.setMaxPoolSize(_maxPoolSize);
         p.initializeHostName(ident);
-        return p.get( this , socketTimeout );
+        return p.get( this , socketTimeout, username, passwd );
     }
 
-    DBClientBase* DBConnectionPool::_finishCreate( const string& host , double socketTimeout , DBClientBase* conn ) {
+    DBClientBase* DBConnectionPool::_finishCreate( const string& host , const string username, const string passwd, double socketTimeout , DBClientBase* conn ) {
         {
             scoped_lock L(_mutex);
             PoolForHost& p = _pools[PoolKey(host,socketTimeout)];
             p.setMaxPoolSize(_maxPoolSize);
             p.initializeHostName(host);
             p.createdOne( conn );
+            if(!username.empty() && !passwd.empty()) {
+                BSONObj auth_bson = BSON("user" << username <<
+                                     "db" << "admin" <<
+                                                                 "pwd" << passwd <<
+                                                                                            "mechanism" << "MONGODB-CR");
+                conn->auth(auth_bson);
+            }
         }
         
         try {
@@ -195,8 +203,9 @@ namespace mongo {
         return conn;
     }
 
-    DBClientBase* DBConnectionPool::get(const ConnectionString& url, double socketTimeout) {
-        DBClientBase * c = _get( url.toString() , socketTimeout );
+    DBClientBase* DBConnectionPool::get(const ConnectionString& url, double socketTimeout, const string username, const string passwd) {
+        log() << "veryfy log here 111"<< username << passwd << endl;
+        DBClientBase *c = _get( url.toString() , socketTimeout, username, passwd );
         if ( c ) {
             try {
                 onHandedOut( c );
@@ -212,11 +221,12 @@ namespace mongo {
         c = url.connect( errmsg, socketTimeout );
         uassert( 13328 ,  _name + ": connect failed " + url.toString() + " : " + errmsg , c );
 
-        return _finishCreate( url.toString() , socketTimeout , c );
+        return _finishCreate( url.toString() , username, passwd, socketTimeout , c);
     }
 
-    DBClientBase* DBConnectionPool::get(const string& host, double socketTimeout) {
-        DBClientBase * c = _get( host , socketTimeout );
+    DBClientBase* DBConnectionPool::get(const string& host, double socketTimeout, const string username, const string passwd) {
+        DBClientBase * c = _get( host , socketTimeout, username, passwd );
+        log() << "veryfy log here 222"<<endl;
         if ( c ) {
             try {
                 onHandedOut( c );
@@ -235,11 +245,12 @@ namespace mongo {
         c = cs.connect( errmsg, socketTimeout );
         if ( ! c )
             throw SocketException( SocketException::CONNECT_ERROR , host , 11002 , str::stream() << _name << " error: " << errmsg );
-        return _finishCreate( host , socketTimeout , c );
+        return _finishCreate( host , username, passwd, socketTimeout , c );
     }
 
     void DBConnectionPool::release(const string& host, DBClientBase *c) {
         scoped_lock L(_mutex);
+        log()<<"release to which pool "<< host << " " << c->getSoTimeout()<<endl;
         _pools[PoolKey(host,c->getSoTimeout())].done(this,c);
     }
 

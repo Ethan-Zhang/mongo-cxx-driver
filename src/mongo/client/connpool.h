@@ -77,7 +77,7 @@ namespace mongo {
         /**
          * gets a connection or return NULL
          */
-        DBClientBase * get( DBConnectionPool * pool , double socketTimeout );
+        DBClientBase * get( DBConnectionPool * pool , double socketTimeout, const string username, const string passwd );
 
         // Deletes all connections in the pool
         void clear();
@@ -182,8 +182,8 @@ namespace mongo {
 
         void flush();
 
-        DBClientBase *get(const string& host, double socketTimeout = 0);
-        DBClientBase *get(const ConnectionString& host, double socketTimeout = 0);
+        DBClientBase *get(const string& host, double socketTimeout = 0, const string username="", const string passwd="");
+        DBClientBase *get(const ConnectionString& host, double socketTimeout = 0, const string username="", const string passwd="");
 
         void release(const string& host, DBClientBase *c);
 
@@ -220,9 +220,9 @@ namespace mongo {
     private:
         DBConnectionPool( DBConnectionPool& p );
 
-        DBClientBase* _get( const string& ident , double socketTimeout );
+        DBClientBase* _get( const string& ident , double socketTimeout, const string username, const string passwd );
 
-        DBClientBase* _finishCreate( const string& ident , double socketTimeout, DBClientBase* conn );
+        DBClientBase* _finishCreate( const string& ident , const string username, const string passwd, double socketTimeout, DBClientBase* conn );
 
         struct PoolKey {
             PoolKey( const std::string& i , double t ) : ident( i ) , timeout( t ) {}
@@ -286,11 +286,11 @@ namespace mongo {
         /** the main constructor you want to use
             throws UserException if can't connect
             */
-        explicit ScopedDbConnection(const string& host, double socketTimeout = 0) : _host(host), _conn( pool.get(host, socketTimeout) ), _socketTimeout( socketTimeout ) {
+        explicit ScopedDbConnection(const string& host, double socketTimeout = 0, const string username="", const string passwd="") : _host(host), _conn( pool.get(host, socketTimeout, username, passwd) ), _socketTimeout( socketTimeout ) {
             _setSocketTimeout();
         }
 
-        explicit ScopedDbConnection(const ConnectionString& host, double socketTimeout = 0) : _host(host.toString()), _conn( pool.get(host, socketTimeout) ), _socketTimeout( socketTimeout ) {
+        explicit ScopedDbConnection(const ConnectionString& host, double socketTimeout = 0, const string username="", const string passwd="") : _host(host.toString()), _conn( pool.get(host, socketTimeout, username, passwd) ), _socketTimeout( socketTimeout ) {
             _setSocketTimeout();
         }
 
