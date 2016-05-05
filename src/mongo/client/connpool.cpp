@@ -78,7 +78,7 @@ namespace mongo {
                 microSec <= _minValidCreationTimeMicroSec;
     }
 
-    DBClientBase * PoolForHost::get( DBConnectionPool * pool , double socketTimeout, const string username="", const string passwd="") {
+    DBClientBase * PoolForHost::get( DBConnectionPool * pool , double socketTimeout, const string& username, const string& passwd) {
 
         time_t now = time(0);
         
@@ -164,10 +164,9 @@ namespace mongo {
           _hooks( new list<DBConnectionHook*>() ) {
     }
 
-    DBClientBase* DBConnectionPool::_get(const string& ident , double socketTimeout, const string username, const string passwd ) {
+    DBClientBase* DBConnectionPool::_get(const string& ident , double socketTimeout, const string& username, const string& passwd ) {
         uassert(17382, "Can't use connection pool during shutdown",
                 !inShutdown());
-        log()<<"use which pool "<< ident << " " << socketTimeout<<endl;
         scoped_lock L(_mutex);
         PoolForHost& p = _pools[PoolKey(ident,socketTimeout)];
         p.setMaxPoolSize(_maxPoolSize);
@@ -175,7 +174,7 @@ namespace mongo {
         return p.get( this , socketTimeout, username, passwd );
     }
 
-    DBClientBase* DBConnectionPool::_finishCreate( const string& host , const string username, const string passwd, double socketTimeout , DBClientBase* conn ) {
+    DBClientBase* DBConnectionPool::_finishCreate( const string& host , const string& username, const string& passwd, double socketTimeout , DBClientBase* conn ) {
         {
             scoped_lock L(_mutex);
             PoolForHost& p = _pools[PoolKey(host,socketTimeout)];
@@ -203,8 +202,7 @@ namespace mongo {
         return conn;
     }
 
-    DBClientBase* DBConnectionPool::get(const ConnectionString& url, double socketTimeout, const string username, const string passwd) {
-        log() << "veryfy log here 111"<< username << passwd << endl;
+    DBClientBase* DBConnectionPool::get(const ConnectionString& url, double socketTimeout, const string& username, const string& passwd) {
         DBClientBase *c = _get( url.toString() , socketTimeout, username, passwd );
         if ( c ) {
             try {
@@ -224,9 +222,8 @@ namespace mongo {
         return _finishCreate( url.toString() , username, passwd, socketTimeout , c);
     }
 
-    DBClientBase* DBConnectionPool::get(const string& host, double socketTimeout, const string username, const string passwd) {
+    DBClientBase* DBConnectionPool::get(const string& host, double socketTimeout, const string& username, const string& passwd) {
         DBClientBase * c = _get( host , socketTimeout, username, passwd );
-        log() << "veryfy log here 222"<<endl;
         if ( c ) {
             try {
                 onHandedOut( c );
@@ -250,7 +247,6 @@ namespace mongo {
 
     void DBConnectionPool::release(const string& host, DBClientBase *c) {
         scoped_lock L(_mutex);
-        log()<<"release to which pool "<< host << " " << c->getSoTimeout()<<endl;
         _pools[PoolKey(host,c->getSoTimeout())].done(this,c);
     }
 
