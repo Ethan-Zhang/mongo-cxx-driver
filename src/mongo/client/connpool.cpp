@@ -181,12 +181,18 @@ namespace mongo {
             p.setMaxPoolSize(_maxPoolSize);
             p.initializeHostName(host);
             p.createdOne( conn );
-            if(!username.empty() && !passwd.empty()) {
-                BSONObj auth_bson = BSON("user" << username <<
-                                     "db" << "admin" <<
-                                                                 "pwd" << passwd <<
-                                                                                            "mechanism" << "MONGODB-CR");
-                conn->auth(auth_bson);
+            try {
+                if(!username.empty() && !passwd.empty()) {
+                    BSONObj auth_bson = BSON("user" << username <<
+                                             "db" << "admin" <<  //TODO: need pass the admin db name
+                                             "pwd" << passwd <<
+                                             "mechanism" << "MONGODB-CR");
+                    conn->auth(auth_bson);
+                }
+            }
+            catch ( std::exception & ) {
+                delete conn;
+                throw;
             }
         }
         
