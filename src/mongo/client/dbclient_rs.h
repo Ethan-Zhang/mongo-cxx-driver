@@ -144,6 +144,13 @@ public:
     virtual bool isFailed() const {
         return !_master || _master->isFailed();
     }
+    
+    virtual bool isAllFailed() const {
+        if ( (_master && !_master->isFailed()) || (_lastSlaveOkConn.get() && !_lastSlaveOkConn->isFailed()) )
+            return false;
+        return true;
+    }
+
     bool isStillConnected();
 
     // ----- informational ----
