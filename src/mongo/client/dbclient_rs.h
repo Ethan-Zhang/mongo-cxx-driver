@@ -145,7 +145,7 @@ public:
         return !_master || _master->isFailed();
     }
     
-    virtual bool isAllFailed() const {
+    bool isAllFailed() const {
         if ( (_master && !_master->isFailed()) || (_lastSlaveOkConn.get() && !_lastSlaveOkConn->isFailed()) )
             return false;
         return true;
